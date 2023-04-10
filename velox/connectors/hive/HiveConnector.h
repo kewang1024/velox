@@ -327,4 +327,52 @@ class HiveHadoop2ConnectorFactory : public HiveConnectorFactory {
       : HiveConnectorFactory(kHiveHadoop2ConnectorName) {}
 };
 
+// TODO: deprecate this structure in followup.
+// Stores partitioned output channels.
+// For each 'kConstantChannel', there is an entry in 'constValues'.
+struct PartitionedOutputChannels {
+  std::vector<column_index_t> channels;
+  // Each vector holding a single value for a constant channel.
+  std::vector<VectorPtr> constValues;
+
+  std::string getConstValues() const {
+    std::string constValuesString;
+    for (auto element : constValues) {
+      constValuesString.append(element->toString());
+    }
+    return constValuesString;
+  }
+};
+
+class HivePartitionFunctionSpec : public core::PartitionFunctionSpec {
+ public:
+  HivePartitionFunctionSpec(
+      int numBuckets,
+      const std::vector<int>& bucketToPartition,
+      const PartitionedOutputChannels& keyChannels)
+      : numBuckets_{numBuckets},
+        bucketToPartition_(bucketToPartition),
+        keyChannels_{keyChannels} {}
+
+  std::unique_ptr<core::PartitionFunction> create(
+      int numPartitions) const override;
+
+  std::string toString() const override {
+    return "HIVE({NUM_BUCKETS + " + std::to_string(numBuckets_) +
+        " KEYS channels " + folly::join(", ", keyChannels_.channels) +
+        " KEYS constValues " + keyChannels_.getConstValues() + "})";
+  }
+
+  folly::dynamic serialize() const override;
+
+  static core::PartitionFunctionSpecPtr deserialize(
+      const folly::dynamic& obj,
+      void* context);
+
+ private:
+  const int numBuckets_;
+  const std::vector<int> bucketToPartition_;
+  const PartitionedOutputChannels keyChannels_;
+};
+
 } // namespace facebook::velox::connector::hive

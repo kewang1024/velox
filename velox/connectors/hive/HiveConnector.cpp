@@ -15,6 +15,7 @@
  */
 
 #include "velox/connectors/hive/HiveConnector.h"
+#include "velox/connectors/hive/HivePartitionFunction.h"
 
 #include "velox/common/base/Fs.h"
 #include "velox/dwio/common/InputStream.h"
@@ -762,6 +763,52 @@ HiveConnector::HiveConnector(
               FLAGS_file_handle_cache_mb << 20),
           std::make_unique<FileHandleGenerator>(std::move(properties))),
       executor_(executor) {}
+
+std::unique_ptr<core::PartitionFunction> HivePartitionFunctionSpec::create(
+    int numPartitions) const {
+  return std::make_unique<velox::connector::hive::HivePartitionFunction>(
+      numBuckets_,
+      bucketToPartition_,
+      keyChannels_.channels,
+      keyChannels_.constValues);
+}
+
+folly::dynamic HivePartitionFunctionSpec::serialize() const {
+  folly::dynamic obj = folly::dynamic::object;
+  obj["name"] = "HivePartitionFunctionSpec";
+  obj["numBuckets"] = ISerializable::serialize(numBuckets_);
+  obj["bucketToPartition"] = ISerializable::serialize(bucketToPartition_);
+  obj["keys"] = ISerializable::serialize(keyChannels_.channels);
+  std::vector<velox::core::ConstantTypedExpr> constValues;
+  constValues.reserve(keyChannels_.constValues.size());
+  for (const auto& value : keyChannels_.constValues) {
+    constValues.emplace_back(value);
+  }
+  obj["constants"] = ISerializable::serialize(constValues);
+  return obj;
+}
+
+// static
+core::PartitionFunctionSpecPtr HivePartitionFunctionSpec::deserialize(
+    const folly::dynamic& obj,
+    void* context) {
+  PartitionedOutputChannels keyChannels;
+  keyChannels.channels =
+      ISerializable::deserialize<std::vector<column_index_t>>(obj["keys"]);
+  const auto constValues =
+      ISerializable::deserialize<std::vector<velox::core::ConstantTypedExpr>>(
+          obj["constants"]);
+  VELOX_CHECK_EQ(keyChannels.channels.size(), constValues.size());
+  keyChannels.constValues.reserve(constValues.size());
+  auto* pool = static_cast<memory::MemoryPool*>(context);
+  for (const auto& value : constValues) {
+    keyChannels.constValues.emplace_back(value->toConstantVector(pool));
+  }
+  return std::make_shared<HivePartitionFunctionSpec>(
+      ISerializable::deserialize<int>(obj["numBuckets"]),
+      ISerializable::deserialize<std::vector<int>>(obj["bucketToPartition"]),
+      keyChannels);
+}
 
 VELOX_REGISTER_CONNECTOR_FACTORY(std::make_shared<HiveConnectorFactory>())
 VELOX_REGISTER_CONNECTOR_FACTORY(
