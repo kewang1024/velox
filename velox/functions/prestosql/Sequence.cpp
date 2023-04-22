@@ -60,6 +60,7 @@ class SequenceFunction : public exec::VectorFunction {
       const TypePtr& outputType,
       exec::EvalCtx& context,
       VectorPtr& result) const override {
+    bool isDate = args[0]->type() == DATE();
     exec::DecodedArgs decodedArgs(rows, args, context);
     auto startVector = decodedArgs.at(0);
     auto stopVector = decodedArgs.at(1);
@@ -80,10 +81,13 @@ class SequenceFunction : public exec::VectorFunction {
     context.applyToSelectedNoThrow(rows, [&](auto row) {
       auto start = toInt64(startVector->valueAt<T>(row));
       auto stop = toInt64(stopVector->valueAt<T>(row));
-      const int64_t step = (stepVector == nullptr)
-          ? (stop >= start ? 1 : -1)
-          : stepVector->valueAt<int64_t>(row);
-      rawSizes[row] = checkArguments(start, stop, step);
+      auto step = getStep(
+          startVector->valueAt<T>(row),
+          stopVector->valueAt<T>(row),
+          stepVector,
+          row,
+          isDate);
+      rawSizes[row] = checkArguments(start, stop, step, isDate);
       numElements += rawSizes[row];
     });
 
@@ -98,6 +102,7 @@ class SequenceFunction : public exec::VectorFunction {
         rawOffsets[row] = elementsOffset;
         writeToElements(
             rawElements + elementsOffset,
+            isDate,
             sequenceCount,
             startVector,
             stopVector,
@@ -115,7 +120,13 @@ class SequenceFunction : public exec::VectorFunction {
 
  private:
   static vector_size_t
-  checkArguments(int64_t start, int64_t stop, int64_t step) {
+  checkArguments(int64_t start, int64_t stop, int64_t step, bool isDate) {
+    if (isDate) {
+      VELOX_USER_CHECK(
+          step % kMillisInDay == 0,
+          "sequence step must be a day interval if start and end values are dates");
+      step = step / kMillisInDay;
+    }
     VELOX_USER_CHECK_NE(step, 0, "step must not be zero");
     VELOX_USER_CHECK(
         step > 0 ? stop >= start : stop <= start,
@@ -131,6 +142,7 @@ class SequenceFunction : public exec::VectorFunction {
 
   static void writeToElements(
       T* elements,
+      bool isDate,
       vector_size_t sequenceCount,
       DecodedVector* startVector,
       DecodedVector* stopVector,
@@ -138,12 +150,26 @@ class SequenceFunction : public exec::VectorFunction {
       vector_size_t row) {
     auto start = startVector->valueAt<T>(row);
     auto stop = stopVector->valueAt<T>(row);
-    const int64_t step = (stepVector == nullptr)
-        ? (toInt64(stop) >= toInt64(start) ? 1 : -1)
-        : toInt64(stepVector->valueAt<T>(row));
+    auto step = getStep(start, stop, stepVector, row, isDate);
+    if (isDate) {
+      step = step / kMillisInDay;
+    }
     for (auto i = 0; i < sequenceCount; ++i) {
       elements[i] = add(start, step * i);
     }
+  }
+
+  static int64_t getStep(
+      T start,
+      T stop,
+      DecodedVector* stepVector,
+      vector_size_t row,
+      bool isDate) {
+    if (stepVector) {
+      return stepVector->valueAt<int64_t>(row);
+    }
+    auto intervalMultiplier = isDate ? kMillisInDay : 1;
+    return intervalMultiplier * (toInt64(stop) >= toInt64(start) ? 1 : -1);
   }
 };
 
@@ -165,6 +191,12 @@ std::vector<std::shared_ptr<exec::FunctionSignature>> signatures() {
           .returnType("array(date)")
           .argumentType("date")
           .argumentType("date")
+          .build(),
+      exec::FunctionSignatureBuilder()
+          .returnType("array(date)")
+          .argumentType("date")
+          .argumentType("date")
+          .argumentType("INTERVAL DAY TO SECOND")
           .build()};
   return signatures;
 }
