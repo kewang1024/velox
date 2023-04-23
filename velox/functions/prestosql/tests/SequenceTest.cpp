@@ -201,3 +201,19 @@ TEST_F(SequenceTest, invalidIntervalStep) {
       {startVector, stopVector, stepVector},
       expected);
 }
+
+TEST_F(SequenceTest, timestamp) {
+  const auto startVector = makeFlatVector<Timestamp>(
+      {Timestamp(1991, 0), Timestamp(1992, 0)});
+  const auto stopVector = makeFlatVector<Timestamp>(
+      {Timestamp(1996, 0), Timestamp(1992, 0)});
+  const auto stepVector =
+      makeFlatVector<int64_t>({1000, 1000}, INTERVAL_DAY_TIME());
+  const auto expected = makeArrayVector<Timestamp>(
+      {{Timestamp(1991, 0), Timestamp(1992, 0),
+        Timestamp(1993, 0), Timestamp(1994, 0),
+        Timestamp(1995, 0), Timestamp(1996, 0)},
+       {Timestamp(1992, 0)}});
+  testExpression(
+      "sequence(C0, C1, C2)", {startVector, stopVector, stepVector}, expected);
+}
