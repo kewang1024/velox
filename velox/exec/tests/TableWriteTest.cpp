@@ -1077,6 +1077,77 @@ TEST_P(AllTableWriterTest, commitStrategies) {
   }
 }
 
+TEST_P(PartitionedTableWriterTest, specialPartitionName) {
+  int32_t numPartitions = 50;
+  int32_t numBatches = 2;
+
+  auto rowType =
+      ROW({"c0", "p0", "p1", "c1", "c3", "c5"},
+          {INTEGER(), INTEGER(), VARCHAR(), BIGINT(), REAL(), VARCHAR()});
+  std::vector<std::string> partitionKeys = {"p0", "p1"};
+  std::vector<TypePtr> partitionTypes = {INTEGER(), VARCHAR()};
+
+  std::vector<RowVectorPtr> vectors = makeBatches(numBatches, [&](auto) {
+    return makeRowVector(
+        rowType->names(),
+        {
+            makeFlatVector<int32_t>(
+                numPartitions, [&](auto row) { return row + 100; }),
+            makeFlatVector<int32_t>(
+                numPartitions, [&](auto row) { return row; }),
+            makeFlatVector<StringView>(
+                numPartitions,
+                [&](auto row) {
+                  // special character
+                  return StringView::makeInline(
+                      fmt::format("str_{}{}", row, "/"));
+                }),
+            makeFlatVector<int64_t>(
+                numPartitions, [&](auto row) { return row + 1000; }),
+            makeFlatVector<float>(
+                numPartitions, [&](auto row) { return row + 33.23; }),
+            makeFlatVector<StringView>(
+                numPartitions,
+                [&](auto row) {
+                  return StringView::makeInline(
+                      fmt::format("bucket_{}", row * 3));
+                }),
+        });
+  });
+  createDuckDbTable(vectors);
+
+  auto inputFilePaths = makeFilePaths(numBatches);
+  for (int i = 0; i < numBatches; i++) {
+    writeToFile(inputFilePaths[i]->path, vectors[i]);
+  }
+
+  auto outputDirectory = TempDirectoryPath::create();
+  auto plan = createInsertPlan(
+      PlanBuilder().tableScan(rowType),
+      rowType,
+      outputDirectory->path,
+      partitionKeys,
+      bucketProperty_,
+      connector::hive::LocationHandle::TableType::kNew,
+      commitStrategy_);
+
+  auto task = assertQuery(plan, inputFilePaths, "SELECT count(*) FROM tmp");
+
+  std::set<std::string> actualPartitionDirectories =
+      getLeafSubdirectories(outputDirectory->path);
+
+  std::set<std::string> expectedPartitionDirectories;
+  std::set<std::string> partitionNames;
+  for (auto i = 0; i < numPartitions; i++) {
+    // url encoded
+    auto partitionName = fmt::format("p0={}/p1=str_{}{}", i, i, "%2F");
+    partitionNames.emplace(partitionName);
+    expectedPartitionDirectories.emplace(
+        fs::path(outputDirectory->path) / partitionName);
+  }
+  EXPECT_EQ(actualPartitionDirectories, expectedPartitionDirectories);
+}
+
 TEST_P(PartitionedTableWriterTest, multiplePartitions) {
   int32_t numPartitions = 50;
   int32_t numBatches = 2;
