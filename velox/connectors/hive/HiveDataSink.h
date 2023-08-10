@@ -194,11 +194,13 @@ class HiveInsertTableHandle : public ConnectorInsertTableHandle {
       dwio::common::FileFormat tableStorageFormat =
           dwio::common::FileFormat::DWRF,
       std::shared_ptr<HiveBucketProperty> bucketProperty = nullptr,
+      std::vector<std::shared_ptr<HiveSortingColumn>> sortedProperty = {},
       std::optional<common::CompressionKind> compressionKind = {})
       : inputColumns_(std::move(inputColumns)),
         locationHandle_(std::move(locationHandle)),
         tableStorageFormat_(tableStorageFormat),
         bucketProperty_(std::move(bucketProperty)),
+        sortedProperty_(std::move(sortedProperty)),
         compressionKind_(compressionKind) {
     if (compressionKind.has_value()) {
       VELOX_CHECK(
@@ -251,6 +253,7 @@ class HiveInsertTableHandle : public ConnectorInsertTableHandle {
   const std::shared_ptr<const LocationHandle> locationHandle_;
   const dwio::common::FileFormat tableStorageFormat_;
   const std::shared_ptr<HiveBucketProperty> bucketProperty_;
+  const std::vector<std::shared_ptr<HiveSortingColumn>> sortedProperty_;
   const std::optional<common::CompressionKind> compressionKind_;
 };
 

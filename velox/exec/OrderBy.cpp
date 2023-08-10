@@ -110,6 +110,7 @@ void OrderBy::addInput(RowVectorPtr input) {
   SelectivityVector allRows(input->size());
   std::vector<char*> rows(input->size());
   for (int row = 0; row < input->size(); ++row) {
+    // rowContain create physical row
     rows[row] = data_->newRow();
   }
   for (const auto& columnProjection : columnMap_) {

@@ -53,7 +53,7 @@ add_library(
   SeekableInputStream.cpp
   TypeUtils.cpp
   TypeWithId.cpp
-  WriterFactory.cpp)
+  WriterFactory.cpp SortingWriter.cpp SortingWriter.h SortBuffer.cpp SortBuffer.h)
 
 target_include_directories(velox_dwio_common PRIVATE ${Protobuf_INCLUDE_DIRS})
 
