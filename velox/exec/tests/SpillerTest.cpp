@@ -1491,7 +1491,7 @@ TEST(SpillerTest, stats) {
 TEST(SpillerTest, spillLevel) {
   const uint8_t kInitialBitOffset = 16;
   const uint8_t kNumPartitionsBits = 3;
-  const Spiller::Config config(
+  const common::SpillConfig config(
       "fakeSpillPath",
       0,
       0,
@@ -1573,7 +1573,7 @@ TEST(SpillerTest, spillLevelLimit) {
 
     const HashBitRange partitionBits(
         testData.startBitOffset, testData.startBitOffset + testData.numBits);
-    const Spiller::Config config(
+    const common::SpillConfig config(
         "fakeSpillPath",
         0,
         0,

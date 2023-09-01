@@ -69,7 +69,7 @@ Operator::Operator(
     int32_t operatorId,
     std::string planNodeId,
     std::string operatorType,
-    std::optional<Spiller::Config> spillConfig)
+    std::optional<common::SpillConfig> spillConfig)
     : operatorCtx_(std::make_unique<OperatorCtx>(
           driverCtx,
           planNodeId,

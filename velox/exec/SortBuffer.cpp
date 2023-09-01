@@ -27,7 +27,7 @@ SortBuffer::SortBuffer(
     velox::memory::MemoryPool* pool,
     tsan_atomic<bool>* nonReclaimableSection,
     uint32_t* numSpillRuns,
-    const Spiller::Config* spillConfig,
+    const common::SpillConfig* spillConfig,
     uint64_t spillMemoryThreshold)
     : input_(input),
       sortCompareFlags_(sortCompareFlags),
