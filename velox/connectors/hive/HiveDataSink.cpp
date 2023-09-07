@@ -20,7 +20,9 @@
 #include "velox/connectors/hive/HiveConfig.h"
 #include "velox/connectors/hive/HivePartitionFunction.h"
 #include "velox/core/ITypedExpr.h"
+#include "velox/dwio/common/SortingWriter.h"
 #include "velox/dwio/dwrf/writer/Writer.h"
+#include "velox/exec/SortBuffer.h"
 
 #include "velox/connectors/hive/TableHandle.h"
 #include "velox/exec/OperatorUtils.h"
@@ -299,7 +301,9 @@ HiveDataSink::HiveDataSink(
                              inputType_)
                        : nullptr),
       writerFactory_(dwio::common::getWriterFactory(
-          insertTableHandle_->tableStorageFormat())) {
+          insertTableHandle_->tableStorageFormat())),
+      spillConfig_(connectorQueryCtx->getSpillConfig()),
+      numSpillRuns_(connectorQueryCtx->getNumSpillRuns()) {
   VELOX_USER_CHECK(
       !isBucketed() || isPartitioned(), "A bucket table must be partitioned");
   if (isBucketed()) {
@@ -444,7 +448,7 @@ uint32_t HiveDataSink::appendWriter(const HiveWriterId& id) {
   options.memoryPool = connectorQueryCtx_->connectorMemoryPool();
   options.compressionKind = insertTableHandle_->compressionKind();
   ioStats_.emplace_back(std::make_shared<dwio::common::IoStatistics>());
-  writers_.emplace_back(writerFactory_->createWriter(
+  auto writer = writerFactory_->createWriter(
       dwio::common::FileSink::create(
           writePath,
           {.bufferWrite = false,
@@ -452,7 +456,9 @@ uint32_t HiveDataSink::appendWriter(const HiveWriterId& id) {
            .pool = connectorQueryCtx_->memoryPool(),
            .metricLogger = dwio::common::MetricsLog::voidLog(),
            .stats = ioStats_.back().get()}),
-      options));
+      options);
+  writer = maybeCreateBucketSortWriter(std::move(writer));
+  writers_.emplace_back(std::move(writer));
   // Extends the buffer used for partition rows calculations.
   partitionSizes_.emplace_back(0);
   partitionRows_.emplace_back(nullptr);
@@ -460,6 +466,39 @@ uint32_t HiveDataSink::appendWriter(const HiveWriterId& id) {
 
   writerIndexMap_.emplace(id, writers_.size() - 1);
   return writerIndexMap_[id];
+}
+
+std::unique_ptr<facebook::velox::dwio::common::Writer>
+HiveDataSink::maybeCreateBucketSortWriter(
+    std::unique_ptr<facebook::velox::dwio::common::Writer> writer) {
+  auto sortedProperty = insertTableHandle_->bucketProperty()->sortedBy();
+  if (sortedProperty.size() > 0) {
+    std::vector<column_index_t> sortColumnIndices;
+    std::vector<CompareFlags> sortCompareFlags;
+    sortColumnIndices.reserve(sortedProperty.size());
+    sortCompareFlags.reserve(sortedProperty.size());
+    for (int i = 0; i < sortedProperty.size(); ++i) {
+      sortColumnIndices.push_back(
+          inputType_->getChildIdx(sortedProperty.at(i)->sortColumn()));
+      sortCompareFlags.push_back(
+          {sortedProperty.at(i)->sortOrder().isNullsFirst(),
+           sortedProperty.at(i)->sortOrder().isAscending(),
+           false,
+           CompareFlags::NullHandlingMode::NoStop});
+    }
+    auto sortBuffer = std::make_unique<exec::SortBuffer>(
+        inputType_,
+        sortColumnIndices,
+        sortCompareFlags,
+        1000, // todo batch size
+        connectorQueryCtx_->memoryPool(),
+        &nonReclaimableSection_,
+        numSpillRuns_,
+        spillConfig_);
+    writer = std::make_unique<dwio::common::SortingWriter>(
+        std::move(sortBuffer), std::move(writer));
+  }
+  return writer;
 }
 
 void HiveDataSink::splitInputRowsAndEnsureWriters() {

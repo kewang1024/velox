@@ -1020,9 +1020,27 @@ class BucketedTableOnlyWriteTest
         testParams.push_back(TestParam{
             fileFormat,
             TestMode::kBucketed,
+            CommitStrategy::kNoCommit,
+            HiveBucketProperty::Kind::kHiveCompatible,
+            true,
+            multiDrivers,
+            CompressionKind_ZSTD}
+                                 .value);
+        testParams.push_back(TestParam{
+            fileFormat,
+            TestMode::kBucketed,
             CommitStrategy::kTaskCommit,
             HiveBucketProperty::Kind::kHiveCompatible,
             false,
+            multiDrivers,
+            CompressionKind_ZSTD}
+                                 .value);
+        testParams.push_back(TestParam{
+            fileFormat,
+            TestMode::kBucketed,
+            CommitStrategy::kTaskCommit,
+            HiveBucketProperty::Kind::kHiveCompatible,
+            true,
             multiDrivers,
             CompressionKind_ZSTD}
                                  .value);
@@ -1038,9 +1056,27 @@ class BucketedTableOnlyWriteTest
         testParams.push_back(TestParam{
             fileFormat,
             TestMode::kBucketed,
+            CommitStrategy::kNoCommit,
+            HiveBucketProperty::Kind::kPrestoNative,
+            true,
+            multiDrivers,
+            CompressionKind_ZSTD}
+                                 .value);
+        testParams.push_back(TestParam{
+            fileFormat,
+            TestMode::kBucketed,
             CommitStrategy::kTaskCommit,
             HiveBucketProperty::Kind::kPrestoNative,
             false,
+            multiDrivers,
+            CompressionKind_ZSTD}
+                                 .value);
+        testParams.push_back(TestParam{
+            fileFormat,
+            TestMode::kBucketed,
+            CommitStrategy::kNoCommit,
+            HiveBucketProperty::Kind::kPrestoNative,
+            true,
             multiDrivers,
             CompressionKind_ZSTD}
                                  .value);

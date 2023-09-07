@@ -41,7 +41,7 @@ class Writer {
    * Appends 'data' to writer. Data might still be in memory and not
    * yet written to the file.
    */
-  virtual void write(const VectorPtr& data) = 0;
+  virtual void write(const RowVectorPtr& data) = 0;
 
   /**
    * Forces the writer to flush data to the file.

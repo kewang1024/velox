@@ -227,7 +227,9 @@ class OperatorCtx {
   std::shared_ptr<connector::ConnectorQueryCtx> createConnectorQueryCtx(
       const std::string& connectorId,
       const std::string& planNodeId,
-      memory::MemoryPool* connectorPool) const;
+      memory::MemoryPool* connectorPool,
+      const common::SpillConfig* spillConfig = nullptr,
+      uint32_t* const numSpillRuns = nullptr) const;
 
  private:
   DriverCtx* const driverCtx_;

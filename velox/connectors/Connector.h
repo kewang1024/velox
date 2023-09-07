@@ -19,6 +19,7 @@
 #include "velox/common/base/RuntimeMetrics.h"
 #include "velox/common/caching/AsyncDataCache.h"
 #include "velox/common/caching/ScanTracker.h"
+#include "velox/common/config/SpillConfig.h"
 #include "velox/common/future/VeloxPromise.h"
 #include "velox/core/ExpressionEvaluator.h"
 #include "velox/vector/ComplexVector.h"
@@ -223,6 +224,8 @@ class ConnectorQueryCtx {
       memory::MemoryPool* operatorPool,
       memory::MemoryPool* connectorPool,
       const Config* connectorConfig,
+      const common::SpillConfig* spillConfig,
+      uint32_t* const numSpillRuns,
       std::unique_ptr<core::ExpressionEvaluator> expressionEvaluator,
       cache::AsyncDataCache* cache,
       const std::string& queryId,
@@ -232,6 +235,8 @@ class ConnectorQueryCtx {
       : operatorPool_(operatorPool),
         connectorPool_(connectorPool),
         config_(connectorConfig),
+        spillConfig_(spillConfig),
+        numSpillRuns_(numSpillRuns),
         expressionEvaluator_(std::move(expressionEvaluator)),
         cache_(cache),
         scanId_(fmt::format("{}.{}", taskId, planNodeId)),
@@ -255,6 +260,14 @@ class ConnectorQueryCtx {
 
   const Config* FOLLY_NONNULL config() const {
     return config_;
+  }
+
+  const common::SpillConfig* const getSpillConfig() const {
+    return spillConfig_;
+  }
+
+  uint32_t* getNumSpillRuns() const {
+    return numSpillRuns_;
   }
 
   core::ExpressionEvaluator* expressionEvaluator() const {
@@ -293,6 +306,8 @@ class ConnectorQueryCtx {
   memory::MemoryPool* operatorPool_;
   memory::MemoryPool* connectorPool_;
   const Config* FOLLY_NONNULL config_;
+  const common::SpillConfig* const spillConfig_;
+  uint32_t* numSpillRuns_;
   std::unique_ptr<core::ExpressionEvaluator> expressionEvaluator_;
   cache::AsyncDataCache* cache_;
   const std::string scanId_;

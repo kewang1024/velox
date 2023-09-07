@@ -105,12 +105,12 @@ Writer::Writer(
               "writer_node_{}",
               folly::to<std::string>(folly::Random::rand64())))} {}
 
-void Writer::write(const VectorPtr& input) {
+void Writer::write(const RowVectorPtr& data) {
   auto& context = writerBase_->getContext();
   // Calculate length increment based on linear projection of micro batch size.
   // Total length is capped later.
-  const auto& estimatedInputMemoryBytes = input->estimateFlatSize();
-  const auto inputRowCount = input->size();
+  const auto& estimatedInputMemoryBytes = data->estimateFlatSize();
+  const auto inputRowCount = data->size();
   const size_t writeBatchSize = std::max<size_t>(
       1UL,
       estimatedInputMemoryBytes > 0
@@ -152,7 +152,7 @@ void Writer::write(const VectorPtr& input) {
     }
 
     const auto rawSize = writer_->write(
-        input, common::Ranges::of(rowOffset, rowOffset + numRowsToWrite));
+        data, common::Ranges::of(rowOffset, rowOffset + numRowsToWrite));
     rowOffset += numRowsToWrite;
     context.incRawSize(rawSize);
 

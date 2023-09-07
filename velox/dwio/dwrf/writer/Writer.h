@@ -72,7 +72,7 @@ class Writer : public dwio::common::Writer {
 
   ~Writer() override = default;
 
-  virtual void write(const VectorPtr& input) override;
+  virtual void write(const RowVectorPtr& data) override;
 
   // Forces the writer to flush, does not close the writer.
   virtual void flush() override;

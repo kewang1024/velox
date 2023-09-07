@@ -49,11 +49,15 @@ std::shared_ptr<connector::ConnectorQueryCtx>
 OperatorCtx::createConnectorQueryCtx(
     const std::string& connectorId,
     const std::string& planNodeId,
-    memory::MemoryPool* connectorPool) const {
+    memory::MemoryPool* connectorPool,
+    const common::SpillConfig* spillConfig,
+    uint32_t* const numSpillRuns) const {
   return std::make_shared<connector::ConnectorQueryCtx>(
       pool_,
       connectorPool,
       driverCtx_->task->queryCtx()->getConnectorConfig(connectorId),
+      spillConfig,
+      numSpillRuns,
       std::make_unique<SimpleExpressionEvaluator>(
           execCtx()->queryCtx(), execCtx()->pool()),
       driverCtx_->task->queryCtx()->cache(),
