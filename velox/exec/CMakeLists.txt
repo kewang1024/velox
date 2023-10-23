@@ -82,7 +82,10 @@ add_library(
   WindowFunction.cpp
   WindowPartition.cpp
   AssignUniqueId.cpp
-  PartitionFunction.cpp)
+  PartitionFunction.cpp
+  BroadcastOutputBuffer.cpp
+  PartitionedOutputBuffer.cpp
+  ArbitraryOutputBuffer.cpp)
 
 target_link_libraries(
   velox_exec

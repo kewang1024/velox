@@ -136,10 +136,6 @@ class OutputBuffer {
       int numDestinations,
       uint32_t numDrivers);
 
-  core::PartitionedOutputNode::Kind kind() const {
-    return kind_;
-  }
-
   /// The total number of output buffers may not be known at the task start
   /// time for broadcast and arbitrary output buffer type. This method can be
   /// called to update the total number of broadcast or arbitrary destinations
@@ -190,6 +186,11 @@ class OutputBuffer {
   // Indicates if this output buffer is over-utilized and thus blocks its
   // producers.
   bool isOverutilized() const;
+
+ protected:
+  void releaseAfterAcknowledge(
+      std::vector<std::shared_ptr<SerializedPage>>& freed,
+      std::vector<ContinuePromise>& promises);
 
  private:
   // Percentage of maxSize below which a blocked producer should

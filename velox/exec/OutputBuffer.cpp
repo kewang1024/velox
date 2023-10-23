@@ -204,12 +204,11 @@ std::string DestinationBuffer::toString() {
   return out.str();
 }
 
-namespace {
 // Frees 'freed' and realizes 'promises'. Used after
 // updateAfterAcknowledgeLocked. This runs outside of the mutex, so
 // that we do the expensive free outside and only then continue the
 // producers which will allocate more memory.
-void releaseAfterAcknowledge(
+void OutputBuffer::releaseAfterAcknowledge(
     std::vector<std::shared_ptr<SerializedPage>>& freed,
     std::vector<ContinuePromise>& promises) {
   freed.clear();
@@ -217,7 +216,6 @@ void releaseAfterAcknowledge(
     promise.setValue();
   }
 }
-} // namespace
 
 OutputBuffer::OutputBuffer(
     std::shared_ptr<Task> task,
