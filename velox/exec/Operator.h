@@ -47,6 +47,8 @@ struct MemoryStats {
   uint64_t numMemoryAllocations{0};
 
   void update(memory::MemoryPool* pool) {
+    update(memStatsFromPool(pool));
+#if 0
     const memory::MemoryPool::Stats stats = pool->stats();
     userMemoryReservation = stats.currentBytes;
     systemMemoryReservation = 0;
@@ -54,6 +56,11 @@ struct MemoryStats {
     peakSystemMemoryReservation = 0;
     peakTotalMemoryReservation = stats.peakBytes;
     numMemoryAllocations = stats.numAllocs;
+#endif
+  }
+
+  void update(const MemoryStats& memStats) {
+    // update
   }
 
   void add(const MemoryStats& other) {

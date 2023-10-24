@@ -24,6 +24,7 @@
 #include "velox/common/time/Timer.h"
 #include "velox/exec/Operator.h"
 #include "velox/exec/OperatorUtils.h"
+#include "velox/exec/TableWriter.h"
 #include "velox/exec/Task.h"
 
 using facebook::velox::common::testutil::TestValue;
@@ -769,7 +770,15 @@ void Driver::closeOperators() {
   // Add operator stats to the task.
   for (auto& op : operators_) {
     auto stats = op->stats(true);
-    stats.memoryStats.update(op->pool());
+#if 0
+    if (op->operatorType() == "TableWriter") {
+      stats.memoryStats.update(
+          dynamic_cast<TableWriter*>(op.get())->memStatsPool());
+    } else {
+      stats.memoryStats.update(op->pool());
+    }
+#endif
+    stats.memoryStats.update(op->memStats());
     stats.numDrivers = 1;
     task()->addOperatorStats(stats);
   }

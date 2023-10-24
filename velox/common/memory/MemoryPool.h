@@ -1017,6 +1017,8 @@ class MemoryPoolImpl : public MemoryPool {
   std::unordered_map<uint64_t, AllocationRecord> debugAllocRecords_;
 };
 
+MemoryStats memoryStatsFromPool();
+
 /// An Allocator backed by a memory pool for STL containers.
 template <typename T>
 class StlAllocator {

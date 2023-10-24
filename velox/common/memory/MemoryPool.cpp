@@ -1113,4 +1113,15 @@ void MemoryPoolImpl::leakCheckDbg() {
   }
   VELOX_FAIL(buf.str());
 }
+
+MemStats memStatsFromPool(const& pool) {
+  const memory::MemoryPool::Stats stats = pool->stats();
+  userMemoryReservation = stats.currentBytes;
+  systemMemoryReservation = 0;
+  peakUserMemoryReservation = stats.peakBytes;
+  peakSystemMemoryReservation = 0;
+  peakTotalMemoryReservation = stats.peakBytes;
+  numMemoryAllocations = stats.numAllocs;
+  return memStats;
+}
 } // namespace facebook::velox::memory
