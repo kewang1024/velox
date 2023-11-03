@@ -290,7 +290,8 @@ HiveDataSink::HiveDataSink(
     std::shared_ptr<const HiveInsertTableHandle> insertTableHandle,
     const ConnectorQueryCtx* connectorQueryCtx,
     CommitStrategy commitStrategy,
-    const std::shared_ptr<const Config>& connectorProperties)
+    const std::shared_ptr<const Config>& connectorProperties,
+    const core::QueryConfig& queryConfig)
     : inputType_(std::move(inputType)),
       insertTableHandle_(std::move(insertTableHandle)),
       connectorQueryCtx_(connectorQueryCtx),
@@ -317,7 +318,8 @@ HiveDataSink::HiveDataSink(
                        : nullptr),
       writerFactory_(dwio::common::getWriterFactory(
           insertTableHandle_->tableStorageFormat())),
-      spillConfig_(connectorQueryCtx->spillConfig()) {
+      spillConfig_(connectorQueryCtx->spillConfig()),
+      queryConfig_(queryConfig) {
   VELOX_USER_CHECK(
       !isBucketed() || isPartitioned(), "A bucket table must be partitioned");
   if (isBucketed()) {
@@ -603,8 +605,7 @@ HiveDataSink::maybeCreateBucketSortWriter(
       inputType_,
       sortColumnIndices_,
       sortCompareFlags_,
-      // TODO: set batch size based on the query configs.
-      1000,
+      queryConfig_,
       sortPool,
       writerInfo_.back()->nonReclaimableSectionHolder.get(),
       &numSpillRuns_,

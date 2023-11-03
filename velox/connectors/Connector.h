@@ -22,6 +22,7 @@
 #include "velox/common/config/SpillConfig.h"
 #include "velox/common/future/VeloxPromise.h"
 #include "velox/core/ExpressionEvaluator.h"
+#include "velox/core/QueryCtx.h"
 #include "velox/vector/ComplexVector.h"
 
 #include <folly/Synchronized.h>
@@ -364,7 +365,8 @@ class Connector {
       RowTypePtr inputType,
       std::shared_ptr<ConnectorInsertTableHandle> connectorInsertTableHandle,
       ConnectorQueryCtx* connectorQueryCtx,
-      CommitStrategy commitStrategy) = 0;
+      CommitStrategy commitStrategy,
+      const core::QueryConfig& queryConfig) = 0;
 
   // Returns a ScanTracker for 'id'. 'id' uniquely identifies the
   // tracker and different threads will share the same

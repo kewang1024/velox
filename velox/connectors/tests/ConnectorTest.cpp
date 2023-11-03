@@ -42,7 +42,8 @@ class TestConnector : public connector::Connector {
       std::shared_ptr<
           ConnectorInsertTableHandle> /*connectorInsertTableHandle*/,
       ConnectorQueryCtx* /*connectorQueryCtx*/,
-      CommitStrategy /*commitStrategy*/) override final {
+      CommitStrategy /*commitStrategy*/,
+      const core::QueryConfig& /*config*/) override final {
     VELOX_NYI();
   }
 };

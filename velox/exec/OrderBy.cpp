@@ -65,6 +65,10 @@ OrderBy::OrderBy(
       outputBatchRows(), // TODO(gaoge): Move to where we can estimate the
                          // average row size and set the output batch rows based
                          // on it.
+      operatorCtx_->task()
+          ->queryCtx()
+          ->queryConfig()
+          .preferredOutputBatchBytes(),
       pool(),
       &nonReclaimableSection_,
       &numSpillRuns_,

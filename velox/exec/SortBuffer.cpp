@@ -24,7 +24,8 @@ SortBuffer::SortBuffer(
     const RowTypePtr& input,
     const std::vector<column_index_t>& sortColumnIndices,
     const std::vector<CompareFlags>& sortCompareFlags,
-    uint32_t outputBatchSize,
+    const uint32_t maxOutputRows,
+    const uint32_t maxOutputBytes,
     velox::memory::MemoryPool* pool,
     tsan_atomic<bool>* nonReclaimableSection,
     uint32_t* numSpillRuns,
@@ -32,7 +33,8 @@ SortBuffer::SortBuffer(
     uint64_t spillMemoryThreshold)
     : input_(input),
       sortCompareFlags_(sortCompareFlags),
-      outputBatchSize_(outputBatchSize),
+      maxOutputRows_(maxOutputRows),
+      maxOutputBytes_(maxOutputBytes),
       pool_(pool),
       nonReclaimableSection_(nonReclaimableSection),
       numSpillRuns_(numSpillRuns),
@@ -41,7 +43,7 @@ SortBuffer::SortBuffer(
   VELOX_CHECK_GE(input_->size(), sortCompareFlags_.size());
   VELOX_CHECK_GT(sortCompareFlags_.size(), 0);
   VELOX_CHECK_EQ(sortColumnIndices.size(), sortCompareFlags_.size());
-  VELOX_CHECK_GT(outputBatchSize_, 0);
+  VELOX_CHECK_GT(maxOutputRows_, 0);
   VELOX_CHECK_NOT_NULL(nonReclaimableSection_);
   VELOX_CHECK_NOT_NULL(numSpillRuns_);
 
@@ -140,8 +142,8 @@ void SortBuffer::noMoreInput() {
 
     VELOX_CHECK_NULL(spillMerger_);
     spillMerger_ = spiller_->startMerge(0);
-    spillSources_.resize(outputBatchSize_);
-    spillSourceRows_.resize(outputBatchSize_);
+    spillSources_.resize(maxOutputRows_);
+    spillSourceRows_.resize(maxOutputRows_);
   }
 }
 
@@ -291,7 +293,7 @@ void SortBuffer::prepareOutput() {
   VELOX_CHECK_GT(numInputRows_, numOutputRows_);
 
   const vector_size_t batchSize =
-      std::min<vector_size_t>(numInputRows_ - numOutputRows_, outputBatchSize_);
+      std::min<vector_size_t>(numInputRows_ - numOutputRows_, maxOutputRows_);
   if (output_ != nullptr) {
     VectorPtr output = std::move(output_);
     BaseVector::prepareForReuse(output, batchSize);
@@ -308,7 +310,7 @@ void SortBuffer::prepareOutput() {
 
 void SortBuffer::getOutputWithoutSpill() {
   VELOX_CHECK_GT(output_->size(), 0);
-  VELOX_DCHECK_LE(output_->size(), outputBatchSize_);
+  VELOX_DCHECK_LE(output_->size(), maxOutputRows_);
   VELOX_CHECK_LE(output_->size() + numOutputRows_, numInputRows_);
   VELOX_DCHECK_EQ(numInputRows_, sortedRows_.size());
 
@@ -325,18 +327,21 @@ void SortBuffer::getOutputWithoutSpill() {
 void SortBuffer::getOutputWithSpill() {
   VELOX_CHECK_NOT_NULL(spillMerger_);
   VELOX_DCHECK_EQ(sortedRows_.size(), 0);
-  VELOX_DCHECK_EQ(spillSources_.size(), outputBatchSize_);
-  VELOX_DCHECK_EQ(spillSourceRows_.size(), outputBatchSize_);
+  VELOX_DCHECK_EQ(spillSources_.size(), maxOutputRows_);
+  VELOX_DCHECK_EQ(spillSourceRows_.size(), maxOutputRows_);
 
   int32_t outputRow = 0;
   int32_t outputSize = 0;
+  int32_t totalBytes = 0;
   bool isEndOfBatch = false;
-  while (outputRow + outputSize < output_->size()) {
+  while (outputRow + outputSize < output_->size() &&
+         totalBytes < maxOutputBytes_) {
     SpillMergeStream* stream = spillMerger_->next();
     VELOX_CHECK_NOT_NULL(stream);
 
     spillSources_[outputSize] = &stream->current();
     spillSourceRows_[outputSize] = stream->currentIndex(&isEndOfBatch);
+    totalBytes += spillSources_[outputSize]->estimateFlatSize();
     ++outputSize;
     if (FOLLY_UNLIKELY(isEndOfBatch)) {
       // The stream is at end of input batch. Need to copy out the rows before
@@ -354,7 +359,7 @@ void SortBuffer::getOutputWithSpill() {
     // Advance the stream.
     stream->pop();
   }
-  VELOX_CHECK_EQ(outputRow + outputSize, output_->size());
+  output_->resize(outputRow + outputSize);
 
   if (FOLLY_LIKELY(outputSize != 0)) {
     gatherCopy(

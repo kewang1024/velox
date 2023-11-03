@@ -151,7 +151,9 @@ class TestConnector : public connector::Connector {
       std::shared_ptr<
           ConnectorInsertTableHandle> /*connectorInsertTableHandle*/,
       ConnectorQueryCtx* /*connectorQueryCtx*/,
-      CommitStrategy /*commitStrategy*/) override final {
+      CommitStrategy /*commitStrategy*/,
+      uint32_t /*maxOutputRows*/,
+      uint32_t /*maxOutputBytes*/) override final {
     VELOX_NYI();
   }
 };

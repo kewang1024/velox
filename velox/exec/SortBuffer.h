@@ -34,7 +34,7 @@ class SortBuffer {
       const RowTypePtr& input,
       const std::vector<column_index_t>& sortColumnIndices,
       const std::vector<CompareFlags>& sortCompareFlags,
-      uint32_t outputBatchSize,
+      const core::QueryConfig& queryConfig,
       velox::memory::MemoryPool* pool,
       tsan_atomic<bool>* nonReclaimableSection,
       uint32_t* numSpillRuns,
@@ -86,7 +86,9 @@ class SortBuffer {
   const RowTypePtr input_;
   const std::vector<CompareFlags> sortCompareFlags_;
   // Maximum number of rows to return in one output batch.
-  const uint32_t outputBatchSize_;
+  const uint32_t maxOutputRows_;
+  const uint32_t maxOutputBytes_;
+
   velox::memory::MemoryPool* const pool_;
   // The flag is passed from the associated operator such as OrderBy or
   // TableWriter to indicate if this sort buffer object is under non-reclaimable

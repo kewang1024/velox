@@ -91,7 +91,8 @@ void TableWriter::createDataSink() {
       mappedType_,
       insertTableHandle_,
       connectorQueryCtx_.get(),
-      commitStrategy_);
+      commitStrategy_,
+      operatorCtx_->task()->queryCtx()->queryConfig());
 }
 
 void TableWriter::abortDataSink() {

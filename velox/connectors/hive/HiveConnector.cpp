@@ -102,7 +102,8 @@ std::unique_ptr<DataSink> HiveConnector::createDataSink(
     RowTypePtr inputType,
     std::shared_ptr<ConnectorInsertTableHandle> connectorInsertTableHandle,
     ConnectorQueryCtx* connectorQueryCtx,
-    CommitStrategy commitStrategy) {
+    CommitStrategy commitStrategy,
+    const core::QueryConfig& queryConfig) {
   auto hiveInsertHandle = std::dynamic_pointer_cast<HiveInsertTableHandle>(
       connectorInsertTableHandle);
   VELOX_CHECK_NOT_NULL(
@@ -112,7 +113,8 @@ std::unique_ptr<DataSink> HiveConnector::createDataSink(
       hiveInsertHandle,
       connectorQueryCtx,
       commitStrategy,
-      connectorProperties());
+      connectorProperties(),
+      queryConfig);
 }
 
 std::unique_ptr<core::PartitionFunction> HivePartitionFunctionSpec::create(

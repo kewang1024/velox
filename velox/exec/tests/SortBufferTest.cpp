@@ -111,6 +111,7 @@ TEST_F(SortBufferTest, singleKey) {
         sortColumnIndices_,
         testData.sortCompareFlags,
         10000,
+        10000,
         pool_.get(),
         &nonReclaimableSection_,
         &numSpillRuns_);
@@ -142,6 +143,7 @@ TEST_F(SortBufferTest, multipleKeys) {
       inputType_,
       sortColumnIndices_,
       sortCompareFlags_,
+      10000,
       10000,
       pool_.get(),
       &nonReclaimableSection_,
@@ -225,6 +227,7 @@ TEST_F(SortBufferTest, DISABLED_randomData) {
         testData.sortColumnIndices,
         testData.sortCompareFlags,
         1000,
+        1000,
         pool_.get(),
         &nonReclaimableSection_,
         &numSpillRuns_);
@@ -250,29 +253,35 @@ TEST_F(SortBufferTest, batchOutput) {
   struct {
     bool triggerSpill;
     std::vector<size_t> numInputRows;
-    size_t outputBatchSize;
-    std::vector<size_t> expectedOutputBufferSizes;
+    size_t maxOutputRows;
+    size_t maxOutputBytes;
+    std::vector<size_t> expectedOutputRowCount;
 
     std::string debugString() const {
       const std::string numInputRowsStr = folly::join(",", numInputRows);
-      const std::string expectedOutputBufferSizesStr =
-          folly::join(",", expectedOutputBufferSizes);
+      const std::string expectedOutputRowCountStr =
+          folly::join(",", expectedOutputRowCount);
       return fmt::format(
-          "triggerSpill:{}, numInputRows:{}, outputBatchSize:{}, expectedOutputBufferSizes:{}",
+          "triggerSpill:{}, numInputRows:{}, maxOutputRows:{}, maxOutputBytes:{}, expectedOutputRowCount:{}",
           triggerSpill,
           numInputRowsStr,
-          outputBatchSize,
-          expectedOutputBufferSizesStr);
+          maxOutputRows,
+          maxOutputBytes,
+          expectedOutputRowCountStr);
     }
   } testSettings[] = {
-      {false, {2, 3, 3}, 1, {1, 1, 1, 1, 1, 1, 1, 1}},
-      {true, {2, 3, 3}, 1, {1, 1, 1, 1, 1, 1, 1, 1}},
-      {false, {2000, 2000}, 10000, {4000}},
-      {true, {2000, 2000}, 10000, {4000}},
-      {false, {2000, 2000}, 2000, {2000, 2000}},
-      {true, {2000, 2000}, 2000, {2000, 2000}},
-      {false, {1024, 1024, 1024}, 1000, {1000, 1000, 1000, 72}},
-      {true, {1024, 1024, 1024}, 1000, {1000, 1000, 1000, 72}}};
+      {false, {2, 3, 3}, 1, 1, {1, 1, 1, 1, 1, 1, 1, 1}},
+      // respect the maxOutputRows limit
+      {true, {2, 3, 3}, 1, 1000000, {1, 1, 1, 1, 1, 1, 1, 1}},
+      {false, {2000, 2000}, 10000, 10000, {4000}},
+      // respect the maxOutputBytes limit
+      {true, {20, 20}, 10000, 100000, {4, 4, 4, 4, 4, 4, 4, 4, 4, 4}},
+      {false, {2000, 2000}, 2000, 10000, {2000, 2000}},
+      // respect the maxOutputBytes limit
+      {true, {100, 100}, 2000, 1000000, {33, 35, 33, 35, 36, 28}},
+      {false, {1024, 1024, 1024}, 1000, 10000, {1000, 1000, 1000, 72}},
+      // respect the maxOutputRows limit
+      {true, {1024, 1024, 1024}, 1000, 100000000, {1000, 1000, 1000, 72}}};
 
   for (const auto& testData : testSettings) {
     SCOPED_TRACE(testData.debugString());
@@ -296,7 +305,8 @@ TEST_F(SortBufferTest, batchOutput) {
         inputType_,
         sortColumnIndices_,
         sortCompareFlags_,
-        testData.outputBatchSize,
+        testData.maxOutputRows,
+        testData.maxOutputBytes,
         pool_.get(),
         &nonReclaimableSection_,
         &numSpillRuns_,
@@ -325,7 +335,7 @@ TEST_F(SortBufferTest, batchOutput) {
     while (output != nullptr) {
       ASSERT_EQ(
           output->size(),
-          testData.expectedOutputBufferSizes[expectedOutputBufferIndex++]);
+          testData.expectedOutputRowCount[expectedOutputBufferIndex++]);
       output = sortBuffer->getOutput();
     }
 
@@ -392,6 +402,7 @@ TEST_F(SortBufferTest, spill) {
         sortColumnIndices_,
         sortCompareFlags_,
         1000,
+        1000,
         pool_.get(),
         &nonReclaimableSection_,
         &numSpillRuns_,
@@ -453,6 +464,7 @@ TEST_F(SortBufferTest, emptySpill) {
         inputType_,
         sortColumnIndices_,
         sortCompareFlags_,
+        1000,
         1000,
         pool_.get(),
         &nonReclaimableSection_,
