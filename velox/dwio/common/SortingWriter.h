@@ -27,7 +27,9 @@ class SortingWriter : public Writer {
  public:
   SortingWriter(
       std::unique_ptr<Writer> writer,
-      std::unique_ptr<exec::SortBuffer> sortBuffer);
+      std::unique_ptr<exec::SortBuffer> sortBuffer,
+      const uint32_t maxOutputRows,
+      const uint32_t maxOutputBytes);
 
   void write(const VectorPtr& data) override;
 
@@ -72,7 +74,11 @@ class SortingWriter : public Writer {
   // if this sort writer has already been closed.
   bool setClose();
 
+  void updateEstimatedOutputRowSize();
+
   const std::unique_ptr<Writer> outputWriter_;
+  const uint32_t maxOutputRows_;
+  const uint32_t maxOutputBytes_;
   memory::MemoryPool* const sortPool_;
   const bool canReclaim_;
   bool closed_{false};

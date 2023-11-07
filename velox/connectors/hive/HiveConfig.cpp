@@ -166,6 +166,16 @@ int32_t HiveConfig::numCacheFileHandles(const Config* config) {
   return config->get<int32_t>(kNumCacheFileHandles, 20'000);
 }
 
+// static.
+int32_t HiveConfig::sortWriterMaxOutputRows(const Config* config) {
+  return config->get<int32_t>(kSortWriterMaxOutputRows, 1000);
+}
+
+// static.
+int32_t HiveConfig::sortWriterMaxOutputBytes(const Config* config) {
+  return config->get<int32_t>(kSortWriterMaxOutputBytes, 10'000);
+}
+
 uint64_t HiveConfig::getOrcWriterMaxStripeSize(
     const Config* connectorQueryCtxConfig,
     const Config* connectorPropertiesConfig) {
