@@ -20,11 +20,17 @@ namespace facebook::velox::dwio::common {
 
 SortingWriter::SortingWriter(
     std::unique_ptr<Writer> writer,
-    std::unique_ptr<exec::SortBuffer> sortBuffer)
+    std::unique_ptr<exec::SortBuffer> sortBuffer,
+    const uint32_t maxOutputRows,
+    const uint64_t maxOutputBytes)
     : outputWriter_(std::move(writer)),
+      maxOutputRows_(maxOutputRows),
+      maxOutputBytes_(maxOutputBytes),
       sortPool_(sortBuffer->pool()),
       canReclaim_(sortBuffer->canSpill()),
       sortBuffer_(std::move(sortBuffer)) {
+  VELOX_CHECK_GT(maxOutputRows_, 0);
+  VELOX_CHECK_GT(maxOutputBytes_, 0);
   if (sortPool_->parent()->reclaimer() != nullptr) {
     sortPool_->setReclaimer(MemoryReclaimer::create(this));
   }
@@ -44,10 +50,16 @@ void SortingWriter::close() {
   }
 
   sortBuffer_->noMoreInput();
-  RowVectorPtr output = sortBuffer_->getOutput();
+  uint32_t estimatedMaxOutputRows = INT_MAX;
+  if (sortBuffer_->estimateOutputRowSize().has_value()) {
+    estimatedMaxOutputRows =
+        maxOutputBytes_ / sortBuffer_->estimateOutputRowSize().value();
+  }
+  auto finalMaxOutputRows = std::min(estimatedMaxOutputRows, maxOutputRows_);
+  RowVectorPtr output = sortBuffer_->getOutput(finalMaxOutputRows);
   while (output != nullptr) {
     outputWriter_->write(output);
-    output = sortBuffer_->getOutput();
+    output = sortBuffer_->getOutput(finalMaxOutputRows);
   }
   sortBuffer_.reset();
   sortPool_->release();

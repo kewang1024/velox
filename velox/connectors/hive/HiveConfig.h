@@ -118,6 +118,11 @@ class HiveConfig {
   static constexpr const char* kOrcWriterMaxDictionaryMemoryConfig =
       "hive.orc.writer.dictionary-max-memory";
 
+  static constexpr const char* kSortWriterMaxOutputRows =
+      "sort_writer_max_output_rows";
+  static constexpr const char* kSortWriterMaxOutputBytes =
+      "sort_writer_max_output_bytes";
+
   static InsertExistingPartitionsBehavior insertExistingPartitionsBehavior(
       const Config* config);
 
@@ -160,6 +165,10 @@ class HiveConfig {
   static int32_t numCacheFileHandles(const Config* config);
 
   static uint64_t fileWriterFlushThresholdBytes(const Config* config);
+
+  static int32_t sortWriterMaxOutputRows(const Config* config);
+
+  static uint64_t sortWriterMaxOutputBytes(const Config* config);
 
   static uint64_t getOrcWriterMaxStripeSize(
       const Config* connectorQueryCtxConfig,

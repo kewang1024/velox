@@ -24,7 +24,6 @@ SortBuffer::SortBuffer(
     const RowTypePtr& input,
     const std::vector<column_index_t>& sortColumnIndices,
     const std::vector<CompareFlags>& sortCompareFlags,
-    uint32_t outputBatchSize,
     velox::memory::MemoryPool* pool,
     tsan_atomic<bool>* nonReclaimableSection,
     uint32_t* numSpillRuns,
@@ -32,7 +31,6 @@ SortBuffer::SortBuffer(
     uint64_t spillMemoryThreshold)
     : input_(input),
       sortCompareFlags_(sortCompareFlags),
-      outputBatchSize_(outputBatchSize),
       pool_(pool),
       nonReclaimableSection_(nonReclaimableSection),
       numSpillRuns_(numSpillRuns),
@@ -41,7 +39,6 @@ SortBuffer::SortBuffer(
   VELOX_CHECK_GE(input_->size(), sortCompareFlags_.size());
   VELOX_CHECK_GT(sortCompareFlags_.size(), 0);
   VELOX_CHECK_EQ(sortColumnIndices.size(), sortCompareFlags_.size());
-  VELOX_CHECK_GT(outputBatchSize_, 0);
   VELOX_CHECK_NOT_NULL(nonReclaimableSection_);
   VELOX_CHECK_NOT_NULL(numSpillRuns_);
 
@@ -100,6 +97,7 @@ void SortBuffer::addInput(const VectorPtr& input) {
     }
   }
   numInputRows_ += allRows.size();
+  updateEstimatedOutputRowSize();
 }
 
 void SortBuffer::noMoreInput() {
@@ -140,23 +138,21 @@ void SortBuffer::noMoreInput() {
 
     VELOX_CHECK_NULL(spillMerger_);
     spillMerger_ = spiller_->startMerge(0);
-    spillSources_.resize(outputBatchSize_);
-    spillSourceRows_.resize(outputBatchSize_);
   }
 }
 
-RowVectorPtr SortBuffer::getOutput() {
+RowVectorPtr SortBuffer::getOutput(uint32_t maxOutputRows) {
   VELOX_CHECK(noMoreInput_);
 
   if (numOutputRows_ == numInputRows_) {
     return nullptr;
   }
 
-  prepareOutput();
+  prepareOutput(maxOutputRows);
   if (spiller_ != nullptr) {
-    getOutputWithSpill();
+    getOutputWithSpill(maxOutputRows);
   } else {
-    getOutputWithoutSpill();
+    getOutputWithoutSpill(maxOutputRows);
   }
   return output_;
 }
@@ -202,6 +198,10 @@ void SortBuffer::spill(int64_t targetRows, int64_t targetBytes) {
   if (data_->numRows() == 0) {
     data_->clear();
   }
+}
+
+std::optional<int64_t> SortBuffer::estimateOutputRowSize() const {
+  return estimatedOutputRowSize_;
 }
 
 void SortBuffer::ensureInputFits(const VectorPtr& input) {
@@ -287,11 +287,26 @@ void SortBuffer::ensureInputFits(const VectorPtr& input) {
           0, outOfLineBytes - (rowsToSpill * outOfLineBytesPerRow)));
 }
 
-void SortBuffer::prepareOutput() {
+void SortBuffer::updateEstimatedOutputRowSize() {
+  const auto optionalRowSize = data_->estimateRowSize();
+  if (!optionalRowSize.has_value()) {
+    return;
+  }
+
+  const auto rowSize = optionalRowSize.value();
+  if (!estimatedOutputRowSize_.has_value()) {
+    estimatedOutputRowSize_ = rowSize;
+  } else if (rowSize > estimatedOutputRowSize_.value()) {
+    estimatedOutputRowSize_ = rowSize;
+  }
+}
+
+void SortBuffer::prepareOutput(uint32_t maxOutputRows) {
+  VELOX_CHECK_GT(maxOutputRows, 0);
   VELOX_CHECK_GT(numInputRows_, numOutputRows_);
 
   const vector_size_t batchSize =
-      std::min<vector_size_t>(numInputRows_ - numOutputRows_, outputBatchSize_);
+      std::min<vector_size_t>(numInputRows_ - numOutputRows_, maxOutputRows);
   if (output_ != nullptr) {
     VectorPtr output = std::move(output_);
     BaseVector::prepareForReuse(output, batchSize);
@@ -306,9 +321,9 @@ void SortBuffer::prepareOutput() {
   }
 }
 
-void SortBuffer::getOutputWithoutSpill() {
+void SortBuffer::getOutputWithoutSpill(uint32_t maxOutputRows) {
   VELOX_CHECK_GT(output_->size(), 0);
-  VELOX_DCHECK_LE(output_->size(), outputBatchSize_);
+  VELOX_DCHECK_LE(output_->size(), maxOutputRows);
   VELOX_CHECK_LE(output_->size() + numOutputRows_, numInputRows_);
   VELOX_DCHECK_EQ(numInputRows_, sortedRows_.size());
 
@@ -322,11 +337,11 @@ void SortBuffer::getOutputWithoutSpill() {
   numOutputRows_ += output_->size();
 }
 
-void SortBuffer::getOutputWithSpill() {
+void SortBuffer::getOutputWithSpill(uint32_t maxOutputRows) {
   VELOX_CHECK_NOT_NULL(spillMerger_);
   VELOX_DCHECK_EQ(sortedRows_.size(), 0);
-  VELOX_DCHECK_EQ(spillSources_.size(), outputBatchSize_);
-  VELOX_DCHECK_EQ(spillSourceRows_.size(), outputBatchSize_);
+  VELOX_DCHECK_EQ(spillSources_.size(), maxOutputRows);
+  VELOX_DCHECK_EQ(spillSourceRows_.size(), maxOutputRows);
 
   int32_t outputRow = 0;
   int32_t outputSize = 0;

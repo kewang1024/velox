@@ -62,9 +62,6 @@ OrderBy::OrderBy(
       outputType_,
       sortColumnIndices,
       sortCompareFlags,
-      outputBatchRows(), // TODO(gaoge): Move to where we can estimate the
-                         // average row size and set the output batch rows based
-                         // on it.
       pool(),
       &nonReclaimableSection_,
       &numSpillRuns_,
@@ -115,7 +112,9 @@ RowVectorPtr OrderBy::getOutput() {
     return nullptr;
   }
 
-  RowVectorPtr output = sortBuffer_->getOutput();
+  const auto maxOutputRows =
+      outputBatchRows(sortBuffer_->estimateOutputRowSize());
+  RowVectorPtr output = sortBuffer_->getOutput(maxOutputRows);
   finished_ = (output == nullptr);
   return output;
 }
