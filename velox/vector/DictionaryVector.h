@@ -164,7 +164,7 @@ class DictionaryVector : public SimpleVector<T> {
         distinctCount.insert(rawIndices[i]);
       }
     }
-    return distinctCount.size() * estimateRowSize();
+    return indices_->capacity() + distinctCount.size() * estimateRowSize();
   }
 
   bool isScalar() const override {

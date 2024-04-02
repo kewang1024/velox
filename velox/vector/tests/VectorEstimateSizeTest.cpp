@@ -150,37 +150,37 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthNoExtraNulls) {
   EXPECT_EQ(3392, dict->retainedSize());
   EXPECT_EQ(297, dict->estimateFlatSize());
   EXPECT_EQ(288, flatten(dict)->retainedSize());
-  EXPECT_EQ(297, dict->estimateCompactSize());
+  EXPECT_EQ(713, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<int32_t>(1'000, int32At));
   EXPECT_EQ(4416, dict->retainedSize());
   EXPECT_EQ(400, dict->estimateFlatSize());
   EXPECT_EQ(416, flatten(dict)->retainedSize());
-  EXPECT_EQ(400, dict->estimateCompactSize());
+  EXPECT_EQ(816, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<int64_t>(1'000, int64At));
   EXPECT_EQ(8512, dict->retainedSize());
   EXPECT_EQ(809, dict->estimateFlatSize());
   EXPECT_EQ(928, flatten(dict)->retainedSize());
-  EXPECT_EQ(809, dict->estimateCompactSize());
+  EXPECT_EQ(1225, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<float>(1'000, floatAt));
   EXPECT_EQ(4416, dict->retainedSize());
   EXPECT_EQ(400, dict->estimateFlatSize());
   EXPECT_EQ(416, flatten(dict)->retainedSize());
-  EXPECT_EQ(400, dict->estimateCompactSize());
+  EXPECT_EQ(816, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<double>(1'000, doubleAt));
   EXPECT_EQ(8512, dict->retainedSize());
   EXPECT_EQ(809, dict->estimateFlatSize());
   EXPECT_EQ(928, flatten(dict)->retainedSize());
-  EXPECT_EQ(809, dict->estimateCompactSize());
+  EXPECT_EQ(1225, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<bool>(1'000, boolAt));
   EXPECT_EQ(576, dict->retainedSize());
   EXPECT_EQ(16, dict->estimateFlatSize());
   EXPECT_EQ(32, flatten(dict)->retainedSize());
-  EXPECT_EQ(16, dict->estimateCompactSize());
+  EXPECT_EQ(432, dict->estimateCompactSize());
 
   // 2 levels of dictionary encoding with distinct indices.
   auto makeDoubleDict = [&](auto base) {
@@ -191,37 +191,37 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthNoExtraNulls) {
   EXPECT_EQ(3808, dict->retainedSize());
   EXPECT_EQ(148, dict->estimateFlatSize());
   EXPECT_EQ(160, flatten(dict)->retainedSize());
-  EXPECT_EQ(148, dict->estimateCompactSize());
+  EXPECT_EQ(564, dict->estimateCompactSize());
 
   dict = makeDoubleDict(makeFlatVector<int32_t>(1'000, int32At));
   EXPECT_EQ(4832, dict->retainedSize());
   EXPECT_EQ(200, dict->estimateFlatSize());
   EXPECT_EQ(288, flatten(dict)->retainedSize());
-  EXPECT_EQ(200, dict->estimateCompactSize());
+  EXPECT_EQ(616, dict->estimateCompactSize());
 
   dict = makeDoubleDict(makeFlatVector<int64_t>(1'000, int64At));
   EXPECT_EQ(8928, dict->retainedSize());
   EXPECT_EQ(404, dict->estimateFlatSize());
   EXPECT_EQ(416, flatten(dict)->retainedSize());
-  EXPECT_EQ(404, dict->estimateCompactSize());
+  EXPECT_EQ(820, dict->estimateCompactSize());
 
   dict = makeDoubleDict(makeFlatVector<float>(1'000, floatAt));
   EXPECT_EQ(4832, dict->retainedSize());
   EXPECT_EQ(200, dict->estimateFlatSize());
   EXPECT_EQ(288, flatten(dict)->retainedSize());
-  EXPECT_EQ(200, dict->estimateCompactSize());
+  EXPECT_EQ(616, dict->estimateCompactSize());
 
   dict = makeDoubleDict(makeFlatVector<double>(1'000, doubleAt));
   EXPECT_EQ(8928, dict->retainedSize());
   EXPECT_EQ(404, dict->estimateFlatSize());
   EXPECT_EQ(416, flatten(dict)->retainedSize());
-  EXPECT_EQ(404, dict->estimateCompactSize());
+  EXPECT_EQ(820, dict->estimateCompactSize());
 
   dict = makeDoubleDict(makeFlatVector<bool>(1'000, boolAt));
   EXPECT_EQ(992, dict->retainedSize());
   EXPECT_EQ(8, dict->estimateFlatSize());
   EXPECT_EQ(32, flatten(dict)->retainedSize());
-  EXPECT_EQ(8, dict->estimateCompactSize());
+  EXPECT_EQ(424, dict->estimateCompactSize());
 
   // duplicate indices
   auto duplicateIndices = makeIndices(100, [](auto row) { return 1; });
@@ -232,7 +232,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthNoExtraNulls) {
   EXPECT_EQ(3392, dict->retainedSize());
   EXPECT_EQ(297, dict->estimateFlatSize());
   EXPECT_EQ(288, flatten(dict)->retainedSize());
-  EXPECT_EQ(2, dict->estimateCompactSize());
+  EXPECT_EQ(418, dict->estimateCompactSize());
 
   // 2 levels of dictionary encoding with duplicate indices.
   auto makeDuplicateDoubleDict = [&](auto base) {
@@ -243,7 +243,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthNoExtraNulls) {
   EXPECT_EQ(3808, dict->retainedSize());
   EXPECT_EQ(148, dict->estimateFlatSize());
   EXPECT_EQ(160, flatten(dict)->retainedSize());
-  EXPECT_EQ(2, dict->estimateCompactSize());
+  EXPECT_EQ(418, dict->estimateCompactSize());
 }
 
 TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthExtraNulls) {
@@ -264,37 +264,37 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthExtraNulls) {
   EXPECT_EQ(3424, dict->retainedSize());
   EXPECT_EQ(297, dict->estimateFlatSize());
   EXPECT_EQ(320, flatten(dict)->retainedSize());
-  EXPECT_EQ(196, dict->estimateCompactSize());
+  EXPECT_EQ(612, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<int32_t>(1'000, int32At));
   EXPECT_EQ(4448, dict->retainedSize());
   EXPECT_EQ(400, dict->estimateFlatSize());
   EXPECT_EQ(448, flatten(dict)->retainedSize());
-  EXPECT_EQ(264, dict->estimateCompactSize());
+  EXPECT_EQ(680, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<int64_t>(1'000, int64At));
   EXPECT_EQ(8544, dict->retainedSize());
   EXPECT_EQ(809, dict->estimateFlatSize());
   EXPECT_EQ(960, flatten(dict)->retainedSize());
-  EXPECT_EQ(534, dict->estimateCompactSize());
+  EXPECT_EQ(950, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<float>(1'000, floatAt));
   EXPECT_EQ(4448, dict->retainedSize());
   EXPECT_EQ(400, dict->estimateFlatSize());
   EXPECT_EQ(448, flatten(dict)->retainedSize());
-  EXPECT_EQ(264, dict->estimateCompactSize());
+  EXPECT_EQ(680, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<double>(1'000, doubleAt));
   EXPECT_EQ(8544, dict->retainedSize());
   EXPECT_EQ(809, dict->estimateFlatSize());
   EXPECT_EQ(960, flatten(dict)->retainedSize());
-  EXPECT_EQ(534, dict->estimateCompactSize());
+  EXPECT_EQ(950, dict->estimateCompactSize());
 
   dict = makeDict(makeFlatVector<bool>(1'000, boolAt));
   EXPECT_EQ(608, dict->retainedSize());
   EXPECT_EQ(16, dict->estimateFlatSize());
   EXPECT_EQ(64, flatten(dict)->retainedSize());
-  EXPECT_EQ(10, dict->estimateCompactSize());
+  EXPECT_EQ(426, dict->estimateCompactSize());
 
   // Dictionary vector with all nulls over an empty flat vector.
   auto indicesAllZero = makeIndices(100, [](auto /*row*/) { return 0; });
@@ -314,13 +314,13 @@ TEST_F(VectorEstimateSizeTest, dictionaryFixedWidthExtraNulls) {
   EXPECT_EQ(448, dict->retainedSize());
   EXPECT_EQ(232, dict->estimateFlatSize());
   EXPECT_EQ(320, flatten(dict)->retainedSize());
-  EXPECT_EQ(0, dict->estimateCompactSize());
+  EXPECT_EQ(416, dict->estimateCompactSize());
 
   dict = makeDictOverEmpty(makeFlatVector<double>(0, doubleAt));
   EXPECT_EQ(448, dict->retainedSize());
   EXPECT_EQ(832, dict->estimateFlatSize());
   EXPECT_EQ(960, flatten(dict)->retainedSize());
-  EXPECT_EQ(0, dict->estimateCompactSize());
+  EXPECT_EQ(416, dict->estimateCompactSize());
 }
 
 TEST_F(VectorEstimateSizeTest, flatStrings) {
@@ -362,7 +362,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryShortStrings) {
   auto dict = makeDict(makeFlatVector<StringView>(1'000, shortStringAt));
   EXPECT_EQ(16704, dict->retainedSize());
   EXPECT_EQ(1628, dict->estimateFlatSize());
-  EXPECT_EQ(1628, dict->estimateCompactSize());
+  EXPECT_EQ(2044, dict->estimateCompactSize());
   EXPECT_EQ(1952, flatten(dict)->retainedSize());
 
   // Inlined strings with nulls. (Distinct indices)
@@ -370,7 +370,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryShortStrings) {
       makeDict(makeFlatVector<StringView>(1'000, shortStringAt, nullEvery(5)));
   EXPECT_EQ(16864, dict->retainedSize());
   EXPECT_EQ(1644, dict->estimateFlatSize());
-  EXPECT_EQ(1644, dict->estimateCompactSize());
+  EXPECT_EQ(2060, dict->estimateCompactSize());
   EXPECT_EQ(1984, flatten(dict)->retainedSize());
 
   // Inlined strings. (Duplicate indices)
@@ -382,7 +382,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryShortStrings) {
   dict = makeDuplicateDict(makeFlatVector<StringView>(1'000, shortStringAt));
   EXPECT_EQ(16704, dict->retainedSize());
   EXPECT_EQ(1628, dict->estimateFlatSize());
-  EXPECT_EQ(16, dict->estimateCompactSize());
+  EXPECT_EQ(432, dict->estimateCompactSize());
   EXPECT_EQ(1952, flatten(dict)->retainedSize());
 
   // Inlined strings with nulls. (Duplicate indices)
@@ -390,7 +390,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryShortStrings) {
           makeDuplicateDict(makeFlatVector<StringView>(1'000, shortStringAt, nullEvery(5)));
   EXPECT_EQ(16864, dict->retainedSize());
   EXPECT_EQ(1644, dict->estimateFlatSize());
-  EXPECT_EQ(16, dict->estimateCompactSize());
+  EXPECT_EQ(432, dict->estimateCompactSize());
   EXPECT_EQ(1984, flatten(dict)->retainedSize());
 }
 
@@ -409,7 +409,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryLongStrings) {
   auto dict = makeDict(makeFlatVector<StringView>(1'000, longStringAt));
   EXPECT_EQ(65760, dict->retainedSize());
   EXPECT_EQ(6534, dict->estimateFlatSize());
-  EXPECT_EQ(6534, dict->estimateCompactSize());
+  EXPECT_EQ(6950, dict->estimateCompactSize());
   // Flatten() method uses BaseVector::copy() which doesn't copy the strings,
   // but rather copies the shared pointer to the string buffers of the source
   // vector. Hence, the size of the "flattened" vector includes the size of the
@@ -421,7 +421,7 @@ TEST_F(VectorEstimateSizeTest, dictionaryLongStrings) {
       makeDict(makeFlatVector<StringView>(1'000, longStringAt, nullEvery(5)));
   EXPECT_EQ(65920, dict->retainedSize());
   EXPECT_EQ(6550, dict->estimateFlatSize());
-  EXPECT_EQ(6550, dict->estimateCompactSize());
+  EXPECT_EQ(6966, dict->estimateCompactSize());
   // Flatten() method uses BaseVector::copy() which doesn't copy the strings,
   // but rather copies the shared pointer to the string buffers of the source
   // vector. Hence, the size of the "flattened" vector includes the size of the
@@ -437,14 +437,14 @@ TEST_F(VectorEstimateSizeTest, dictionaryLongStrings) {
   dict = makeDuplicateDict(makeFlatVector<StringView>(1'000, longStringAt));
   EXPECT_EQ(65760, dict->retainedSize());
   EXPECT_EQ(6534, dict->estimateFlatSize());
-  EXPECT_EQ(65, dict->estimateCompactSize());
+  EXPECT_EQ(481, dict->estimateCompactSize());
   EXPECT_EQ(51008, flatten(dict)->retainedSize());
 
   // Non-inlined strings with nulls. (Duplicate indices)
   dict = makeDuplicateDict(makeFlatVector<StringView>(1'000, longStringAt, nullEvery(5)));
   EXPECT_EQ(65920, dict->retainedSize());
   EXPECT_EQ(6550, dict->estimateFlatSize());
-  EXPECT_EQ(65, dict->estimateCompactSize());
+  EXPECT_EQ(481, dict->estimateCompactSize());
   EXPECT_EQ(51040, flatten(dict)->retainedSize());
 }
 
@@ -544,7 +544,7 @@ TEST_F(VectorEstimateSizeTest, arrayOfInts) {
 
   EXPECT_EQ(12416, makeDict(array)->retainedSize());
   EXPECT_EQ(1200, makeDict(array)->estimateFlatSize());
-  EXPECT_EQ(1200, makeDict(array)->estimateCompactSize());
+  EXPECT_EQ(1616, makeDict(array)->estimateCompactSize());
   EXPECT_EQ(1248, flatten(makeDict(array))->estimateFlatSize());
 
   // Flat array with dictionary encoded elements.
