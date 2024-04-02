@@ -148,6 +148,25 @@ class DictionaryVector : public SimpleVector<T> {
         indices_->capacity();
   }
 
+  double estimateRowSize() const override {
+    return 1.0 * dictionaryValues_->estimateRowSize();
+  }
+
+  uint64_t estimateCompactSize() const override {
+    if (indices() == nullptr) {
+      return 0;
+    }
+
+    std::unordered_set<int32_t> distinctCount;
+    const int32_t* rawIndices = indices_->as<int32_t>();
+    for (int i = 0; i < BaseVector::length_; i++) {
+      if (!BaseVector::isNullAt(i)) {
+        distinctCount.insert(rawIndices[i]);
+      }
+    }
+    return distinctCount.size() * estimateRowSize();
+  }
+
   bool isScalar() const override {
     return dictionaryValues_->isScalar();
   }

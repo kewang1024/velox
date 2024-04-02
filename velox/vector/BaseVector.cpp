@@ -828,6 +828,14 @@ uint64_t BaseVector::estimateFlatSize() const {
   return length_ * avgRowSize;
 }
 
+double BaseVector::estimateRowSize() const {
+    return estimateFlatSize() / length_;
+}
+
+uint64_t BaseVector::estimateCompactSize() const {
+  return estimateFlatSize();
+}
+
 namespace {
 bool isReusableEncoding(VectorEncoding::Simple encoding) {
   return encoding == VectorEncoding::Simple::FLAT ||
