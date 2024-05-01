@@ -242,6 +242,44 @@ TEST_P(LocalFileTest, list) {
   ASSERT_TRUE(localFs->list(std::string_view(tempFolder->getPath())).empty());
 }
 
+TEST_P(LocalFileTest, listFolders) {
+  const auto tempFolder = ::exec::test::TempDirectoryPath::create(useFaultyFs_);
+  // Directory layout:
+  // First layer:   dir1/   dir2/      dir3/    a
+  // Second layer:  b       dir2_1/
+  const auto dir1 = fmt::format("{}/dir1", tempFolder->getPath());
+  const auto dir2 = fmt::format("{}/dir2", tempFolder->getPath());
+  const auto dir2_1 = fmt::format("{}/dir2/dir2_1", tempFolder->getPath());
+  const auto dir3 = fmt::format("{}/dir3", tempFolder->getPath());
+  const auto a = fmt::format("{}/a", tempFolder->getPath());
+  const auto b = fmt::format("{}/dir1/b", tempFolder->getPath());
+
+  auto localFs = filesystems::getFileSystem(a, nullptr);
+  {
+    localFs->mkdir(dir1);
+    localFs->mkdir(dir2);
+    localFs->mkdir(dir2_1);
+    localFs->mkdir(dir3);
+    auto writeFile = localFs->openFileForWrite(a);
+    writeFile = localFs->openFileForWrite(b);
+  }
+  auto folder = localFs->listFolders(std::string_view(tempFolder->getPath()));
+  std::sort(folder.begin(), folder.end());
+  ASSERT_EQ(folder, std::vector<std::string>({dir1, dir2, dir2_1, dir3}));
+
+  localFs->remove(b);
+  localFs->remove(dir1);
+  folder = localFs->listFolders(std::string_view(tempFolder->getPath()));
+  std::sort(folder.begin(), folder.end());
+  ASSERT_EQ(folder, std::vector<std::string>({dir2, dir2_1, dir3}));
+
+  localFs->remove(dir2_1);
+  localFs->remove(dir2);
+  localFs->remove(dir3);
+  ASSERT_TRUE(
+      localFs->listFolders(std::string_view(tempFolder->getPath())).empty());
+}
+
 TEST_P(LocalFileTest, readFileDestructor) {
   if (useFaultyFs_) {
     return;
