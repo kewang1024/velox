@@ -47,10 +47,9 @@ class FaultyFileSystem : public FileSystem {
   // Extracts the delegated real file path by removing the faulty file system
   // scheme prefix.
   inline std::string_view extractPath(std::string_view path) override {
-    if (path.find(scheme()) == 0) {
-      return path.substr(scheme().length());
-    }
-    return path;
+    VELOX_CHECK_EQ(path.find(scheme()), 0, "");
+    auto filePath = path.substr(scheme().length());
+    return getFileSystem(filePath, {})->extractPath(filePath);
   }
 
   std::unique_ptr<ReadFile> openFileForRead(
