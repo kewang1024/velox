@@ -21,13 +21,6 @@
 
 namespace facebook::velox::tests::utils {
 namespace {
-// Extracts the delegated real file path by removing the faulty file system
-// scheme prefix.
-inline std::string extractPath(std::string_view path) {
-  VELOX_CHECK_EQ(path.find(FaultyFileSystem::scheme()), 0);
-  return std::string(path.substr(FaultyFileSystem::scheme().length()));
-}
-
 // Constructs the faulty file path based on the delegated read file 'path'. It
 // pre-appends the faulty file system scheme.
 inline std::string faultyPath(const std::string& path) {
@@ -63,7 +56,7 @@ fileSystemGenerator() {
 std::unique_ptr<ReadFile> FaultyFileSystem::openFileForRead(
     std::string_view path,
     const FileOptions& options) {
-  const std::string delegatedPath = extractPath(path);
+  const std::string delegatedPath = std::string(extractPath(path));
   auto delegatedFile = getFileSystem(delegatedPath, config_)
                            ->openFileForRead(delegatedPath, options);
   return std::make_unique<FaultyReadFile>(
@@ -75,7 +68,7 @@ std::unique_ptr<ReadFile> FaultyFileSystem::openFileForRead(
 std::unique_ptr<WriteFile> FaultyFileSystem::openFileForWrite(
     std::string_view path,
     const FileOptions& options) {
-  const std::string delegatedPath = extractPath(path);
+  const std::string delegatedPath = std::string(extractPath(path));
   auto delegatedFile = getFileSystem(delegatedPath, config_)
                            ->openFileForWrite(delegatedPath, options);
   return std::make_unique<FaultyWriteFile>(
@@ -85,7 +78,7 @@ std::unique_ptr<WriteFile> FaultyFileSystem::openFileForWrite(
 }
 
 void FaultyFileSystem::remove(std::string_view path) {
-  const std::string delegatedPath = extractPath(path);
+  const std::string delegatedPath = std::string(extractPath(path));
   getFileSystem(delegatedPath, config_)->remove(delegatedPath);
 }
 
@@ -116,6 +109,20 @@ std::vector<std::string> FaultyFileSystem::list(std::string_view path) {
     files.push_back(faultyPath(delegatedFile));
   }
   return files;
+}
+
+std::vector<std::string> FaultyFileSystem::listFolders(std::string_view path) {
+  const auto delegatedDirPath = extractPath(path);
+  const auto delegatedFolders =
+      getFileSystem(delegatedDirPath, config_)->listFolders(delegatedDirPath);
+  // NOTE: we shall return the faulty folder paths instead of the delegated
+  // folder paths for list result.
+  std::vector<std::string> folders;
+  folders.reserve(delegatedFolders.size());
+  for (const auto& delegateFolder : delegatedFolders) {
+    folders.push_back(faultyPath(delegateFolder));
+  }
+  return folders;
 }
 
 void FaultyFileSystem::mkdir(std::string_view path) {

@@ -57,6 +57,10 @@ class FileSystem {
   /// Returns the name of the File System
   virtual std::string name() const = 0;
 
+  virtual std::string_view extractPath(std::string_view path) {
+    VELOX_NYI();
+  }
+
   /// Returns a ReadFile handle for a given file path
   virtual std::unique_ptr<ReadFile> openFileForRead(
       std::string_view path,
@@ -86,6 +90,11 @@ class FileSystem {
   /// output method to avoid potential heavy output if there are many entries in
   /// the folder.
   virtual std::vector<std::string> list(std::string_view path) = 0;
+
+  /// Returns all the folders in a path recursively.
+  virtual std::vector<std::string> listFolders(std::string_view path) {
+    VELOX_NYI();
+  }
 
   /// Create a directory (recursively). Throws velox exception on failure.
   virtual void mkdir(std::string_view path) = 0;

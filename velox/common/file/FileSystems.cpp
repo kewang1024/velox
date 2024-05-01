@@ -77,7 +77,7 @@ class LocalFileSystem : public FileSystem {
     return "Local FS";
   }
 
-  inline std::string_view extractPath(std::string_view path) {
+  inline std::string_view extractPath(std::string_view path) override {
     if (path.find(kFileScheme) == 0) {
       return path.substr(kFileScheme.length());
     }
@@ -146,6 +146,16 @@ class LocalFileSystem : public FileSystem {
       filePaths.push_back(entry.path());
     }
     return filePaths;
+  }
+
+  virtual std::vector<std::string> listFolders(std::string_view path) override {
+    std::vector<std::string> folders;
+    for (auto& p :
+         std::filesystem::recursive_directory_iterator(extractPath(path))) {
+      if (p.is_directory())
+        folders.push_back(p.path().string());
+    }
+    return folders;
   }
 
   void mkdir(std::string_view path) override {
