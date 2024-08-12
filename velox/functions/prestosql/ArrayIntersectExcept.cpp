@@ -26,6 +26,14 @@ struct SetWithNull {
     set.reserve(initialSetSize);
   }
 
+  bool insert(const DecodedVector* arrayElements, vector_size_t offset) {
+    return set.insert(arrayElements->template valueAt<T>(offset)).second;
+  }
+
+  bool count(const DecodedVector* arrayElements, vector_size_t offset) const {
+    return set.count(arrayElements->template valueAt<T>(offset));
+  }
+
   void reset() {
     set.clear();
     hasNull = false;
@@ -38,6 +46,55 @@ struct SetWithNull {
   util::floating_point::HashSetNaNAware<T> set;
   bool hasNull{false};
   static constexpr vector_size_t kInitialSetSize{128};
+};
+
+template <>
+struct SetWithNull<ComplexType> {
+  using TKey = std::tuple<uint64_t, const BaseVector*, vector_size_t>;
+
+  struct Hash {
+    size_t operator()(const TKey& key) const {
+      return std::get<0>(key);
+    }
+  };
+
+  struct EqualTo {
+    bool operator()(const TKey& left, const TKey& right) const {
+      return std::get<1>(left)
+          ->equalValueAt(
+              std::get<1>(right),
+              std::get<2>(left),
+              std::get<2>(right),
+              CompareFlags::NullHandlingMode::kNullAsValue)
+          .value();
+    }
+  };
+
+  folly::F14FastSet<TKey, Hash, EqualTo> set;
+  bool hasNull{false};
+  static constexpr vector_size_t kInitialSetSize{128};
+
+  bool insert(const DecodedVector* arrayElements, vector_size_t offset) {
+    const auto vector = arrayElements->base();
+    const auto index = arrayElements->index(offset);
+    const uint64_t hash = vector->hashValueAt(index);
+    return set.insert(std::make_tuple(hash, vector, index)).second;
+  }
+
+  bool count(const DecodedVector* arrayElements, vector_size_t offset) const {
+    const auto vector = arrayElements->base();
+    const auto index = arrayElements->index(offset);
+    const uint64_t hash = vector->hashValueAt(index);
+    return set.count(std::make_tuple(hash, vector, index));
+  }
+
+  void reset() {
+    set.clear();
+  }
+
+  bool empty() const {
+    return !hasNull && set.empty();
+  }
 };
 
 // Generates a set based on the elements of an ArrayVector. Note that we take
@@ -57,7 +114,7 @@ void generateSet(
     if (arrayElements->isNullAt(i)) {
       rightSet.hasNull = true;
     } else {
-      rightSet.set.insert(arrayElements->template valueAt<T>(i));
+      rightSet.insert(arrayElements, i);
     }
   }
 }
@@ -186,19 +243,17 @@ class ArrayIntersectExceptFunction : public exec::VectorFunction {
             }
           }
         } else {
-          auto val = decodedLeftElements->valueAt<T>(i);
           // For array_intersect, add the element if it is found (not found
           // for array_except) in the right-hand side, and wasn't added already
           // (check outputSet).
           bool addValue = false;
           if constexpr (isIntersect) {
-            addValue = rightSet.set.count(val) > 0;
+            addValue = rightSet.count(decodedLeftElements, i) > 0;
           } else {
-            addValue = rightSet.set.count(val) == 0;
+            addValue = rightSet.count(decodedLeftElements, i) == 0;
           }
           if (addValue) {
-            auto it = outputSet.set.insert(val);
-            if (it.second) {
+            if (outputSet.insert(decodedLeftElements, i)) {
               rawNewIndices[indicesCursor++] = i;
             }
           }
@@ -294,7 +349,7 @@ class ArraysOverlapFunction : public exec::VectorFunction {
           hasNull = true;
           continue;
         }
-        if (rightSet.set.count(decodedLeftElements->valueAt<T>(i)) > 0) {
+        if (rightSet.count(decodedLeftElements, i) > 0) {
           // Found an overlapping element. Add to result set.
           resultBoolVector->set(row, true);
           return;
@@ -393,10 +448,9 @@ SetWithNull<T> validateConstantVectorAndGenerateSet(
   return constantSet;
 }
 
-template <bool isIntersect, TypeKind kind>
+template <bool isIntersect, typename T>
 std::shared_ptr<exec::VectorFunction> createTypedArraysIntersectExcept(
     const std::vector<exec::VectorFunctionArg>& inputArgs) {
-  using T = typename TypeTraits<kind>::NativeType;
 
   VELOX_CHECK_EQ(inputArgs.size(), 2);
   BaseVector* rhs = inputArgs[1].constantValue.get();
@@ -424,7 +478,7 @@ std::shared_ptr<exec::VectorFunction> createArrayIntersect(
   validateMatchingArrayTypes(inputArgs, name, 2);
   auto elementType = inputArgs.front().type->childAt(0);
 
-  return VELOX_DYNAMIC_SCALAR_TEMPLATE_TYPE_DISPATCH(
+  return VELOX_DYNAMIC_TEMPLATES_TYPE_DISPATCH(
       createTypedArraysIntersectExcept,
       /* isIntersect */ true,
       elementType->kind(),
@@ -438,7 +492,7 @@ std::shared_ptr<exec::VectorFunction> createArrayExcept(
   validateMatchingArrayTypes(inputArgs, name, 2);
   auto elementType = inputArgs.front().type->childAt(0);
 
-  return VELOX_DYNAMIC_SCALAR_TEMPLATE_TYPE_DISPATCH(
+  return VELOX_DYNAMIC_TEMPLATES_TYPE_DISPATCH(
       createTypedArraysIntersectExcept,
       /* isIntersect */ false,
       elementType->kind(),
@@ -447,26 +501,22 @@ std::shared_ptr<exec::VectorFunction> createArrayExcept(
 
 std::vector<std::shared_ptr<exec::FunctionSignature>> signatures(
     const std::string& returnTypeTemplate) {
-  std::vector<std::shared_ptr<exec::FunctionSignature>> signatures;
-  for (const auto& type : exec::primitiveTypeNames()) {
-    signatures.push_back(
-        exec::FunctionSignatureBuilder()
-            .returnType(
-                fmt::format(fmt::runtime(returnTypeTemplate.c_str()), type))
-            .argumentType(fmt::format("array({})", type))
-            .argumentType(fmt::format("array({})", type))
-            .build());
-  }
-  return signatures;
+  return std::vector<std::shared_ptr<exec::FunctionSignature>>{
+      exec::FunctionSignatureBuilder()
+          .typeVariable("T")
+          .returnType(fmt::format(returnTypeTemplate.c_str()))
+          .argumentType("array(T)")
+          .argumentType("array(T)")
+          .build(),
+  };
 }
 
-template <TypeKind kind>
+template <typename T>
 const std::shared_ptr<exec::VectorFunction> createTypedArraysOverlap(
     const std::vector<exec::VectorFunctionArg>& inputArgs) {
   VELOX_CHECK_EQ(inputArgs.size(), 2);
   auto left = inputArgs[0].constantValue.get();
   auto right = inputArgs[1].constantValue.get();
-  using T = typename TypeTraits<kind>::NativeType;
   if (left == nullptr && right == nullptr) {
     return std::make_shared<ArraysOverlapFunction<T>>();
   }
@@ -484,7 +534,7 @@ std::shared_ptr<exec::VectorFunction> createArraysOverlapFunction(
   validateMatchingArrayTypes(inputArgs, name, 2);
   auto elementType = inputArgs.front().type->childAt(0);
 
-  return VELOX_DYNAMIC_SCALAR_TYPE_DISPATCH(
+  return VELOX_DYNAMIC_TEMPLATE_TYPE_DISPATCH(
       createTypedArraysOverlap, elementType->kind(), inputArgs);
 }
 } // namespace
@@ -496,11 +546,11 @@ VELOX_DECLARE_STATEFUL_VECTOR_FUNCTION(
 
 VELOX_DECLARE_STATEFUL_VECTOR_FUNCTION(
     udf_array_intersect,
-    signatures("array({})"),
+    signatures("array(T)"),
     createArrayIntersect);
 
 VELOX_DECLARE_STATEFUL_VECTOR_FUNCTION(
     udf_array_except,
-    signatures("array({})"),
+    signatures("array(T)"),
     createArrayExcept);
 } // namespace facebook::velox::functions

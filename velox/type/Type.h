@@ -1502,6 +1502,162 @@ std::shared_ptr<const OpaqueType> OPAQUE() {
     }                                                                    \
   }()
 
+#define VELOX_DYNAMIC_TEMPLATE_TYPE_DISPATCH(TEMPLATE_FUNC, typeKind, ...)     \
+  [&]() {                                                                      \
+    switch (typeKind) {                                                        \
+      case ::facebook::velox::TypeKind::BOOLEAN: {                             \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::BOOLEAN>::NativeType>(__VA_ARGS__);   \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::INTEGER: {                             \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::INTEGER>::NativeType>(__VA_ARGS__);   \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::TINYINT: {                             \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::TINYINT>::NativeType>(__VA_ARGS__);   \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::SMALLINT: {                            \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::SMALLINT>::NativeType>(__VA_ARGS__);  \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::BIGINT: {                              \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::BIGINT>::NativeType>(__VA_ARGS__);    \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::HUGEINT: {                             \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::HUGEINT>::NativeType>(__VA_ARGS__);   \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::REAL: {                                \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::REAL>::NativeType>(__VA_ARGS__);      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::DOUBLE: {                              \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::DOUBLE>::NativeType>(__VA_ARGS__);    \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::VARCHAR: {                             \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::VARCHAR>::NativeType>(__VA_ARGS__);   \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::VARBINARY: {                           \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::VARBINARY>::NativeType>(__VA_ARGS__); \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::TIMESTAMP: {                           \
+        return TEMPLATE_FUNC<typename TypeTraits<                              \
+            ::facebook::velox::TypeKind::TIMESTAMP>::NativeType>(__VA_ARGS__); \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::MAP: {                                 \
+        return TEMPLATE_FUNC<ComplexType>(__VA_ARGS__);                        \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::ARRAY: {                               \
+        return TEMPLATE_FUNC<ComplexType>(__VA_ARGS__);                        \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::ROW: {                                 \
+        return TEMPLATE_FUNC<ComplexType>(__VA_ARGS__);                        \
+      }                                                                        \
+      default:                                                                 \
+        VELOX_FAIL(                                                            \
+            "not a scalar type! kind: {}", mapTypeKindToName(typeKind));       \
+    }                                                                          \
+  }()
+
+#define VELOX_DYNAMIC_TEMPLATES_TYPE_DISPATCH(TEMPLATE_FUNC, T, typeKind, ...) \
+  [&]() {                                                                      \
+    switch (typeKind) {                                                        \
+      case ::facebook::velox::TypeKind::BOOLEAN: {                             \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::BOOLEAN>::NativeType>(            \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::INTEGER: {                             \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::INTEGER>::NativeType>(            \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::TINYINT: {                             \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::TINYINT>::NativeType>(            \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::SMALLINT: {                            \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::SMALLINT>::NativeType>(           \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::BIGINT: {                              \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::BIGINT>::NativeType>(             \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::HUGEINT: {                             \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::HUGEINT>::NativeType>(            \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::REAL: {                                \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::REAL>::NativeType>(__VA_ARGS__);  \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::DOUBLE: {                              \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::DOUBLE>::NativeType>(             \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::VARCHAR: {                             \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::VARCHAR>::NativeType>(            \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::VARBINARY: {                           \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::VARBINARY>::NativeType>(          \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::TIMESTAMP: {                           \
+        return TEMPLATE_FUNC<                                                  \
+            T,                                                                 \
+            typename TypeTraits<                                               \
+                ::facebook::velox::TypeKind::TIMESTAMP>::NativeType>(          \
+            __VA_ARGS__);                                                      \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::MAP: {                                 \
+        return TEMPLATE_FUNC<T, ComplexType>(__VA_ARGS__);                     \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::ARRAY: {                               \
+        return TEMPLATE_FUNC<T, ComplexType>(__VA_ARGS__);                     \
+      }                                                                        \
+      case ::facebook::velox::TypeKind::ROW: {                                 \
+        return TEMPLATE_FUNC<T, ComplexType>(__VA_ARGS__);                     \
+      }                                                                        \
+      default:                                                                 \
+        VELOX_FAIL(                                                            \
+            "not a scalar type! kind: {}", mapTypeKindToName(typeKind));       \
+    }                                                                          \
+  }()
+
 #define VELOX_DYNAMIC_SCALAR_TYPE_DISPATCH_ALL(TEMPLATE_FUNC, typeKind, ...)   \
   [&]() {                                                                      \
     if ((typeKind) == ::facebook::velox::TypeKind::UNKNOWN) {                  \
